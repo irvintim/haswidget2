@@ -26,7 +26,9 @@ class SwidgetDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize DataUpdateCoordinator to gather data for specific device"""
         self.device = device
-        update_interval = timedelta(seconds=0.5)
+        # Since we're using websockets for real-time updates, we only need occasional
+        # polling as a fallback to detect connection issues
+        update_interval = timedelta(seconds=30)
         super().__init__(
             hass,
             _LOGGER,
@@ -48,4 +50,7 @@ class SwidgetDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> None:
         """Fetch all device and sensor data from api."""
+        # Since we're using websockets for real-time updates, this polling
+        # is just a fallback. The websocket callbacks handle state updates.
+        # We don't need to fetch data here as it would be redundant.
         return
