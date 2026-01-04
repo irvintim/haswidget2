@@ -88,10 +88,14 @@ class SwidgetDevice:
         """ Process any information about the state of the device or insert"""
         _LOGGER.debug(f"Processing state: {state}")
         # State is not always in the state (during callback)
+        # Update RSSI if available, but don't fail if it's missing
         try:
             self.rssi = state["connection"]["rssi"]
-        except:
+        except (KeyError, TypeError):
+            # RSSI not in this state update - this is normal for partial updates
             pass
+        except Exception as ex:
+            _LOGGER.warning(f"Unexpected error extracting RSSI from state: {ex}")
         """
         2022-06-28 14:53:13 ERROR (MainThread) [custom_components.swidget.swidgetclient.device] Self.assemblies: {'host': <custom_components.swidget.swidgetclient.device.SwidgetAssembly object at 0xffff862b6280>, 'insert': <custom_components.swidget.swidgetclient.device.SwidgetAssembly object at 0xffff8f0b5520>}
         Processing state: {'request_id': 'command', 'insert': {'components': {'usb': {'toggle': {}, 'state': 'on'}}}}
@@ -105,8 +109,11 @@ class SwidgetDevice:
                 try:
                     _LOGGER.debug(f"Setting State: {state[assembly]['components'][id]}")
                     component.functions.update(state[assembly]["components"][id])
-                except:
+                except (KeyError, TypeError):
+                    # Component not in this state update - normal for partial updates
                     pass
+                except Exception as ex:
+                    _LOGGER.warning(f"Unexpected error updating component {assembly}/{id}: {ex}")
         self._last_update = int(time.time())
         _LOGGER.debug(f"Finished getting state for device")
         a = self.assemblies['host'].__dict__
@@ -173,8 +180,9 @@ class SwidgetDevice:
                 ssl=self.ssl
             ) as response:
                 return response.text
-        except:
-            raise SwidgetException
+        except Exception as ex:
+            _LOGGER.error(f"Failed to ping device at {self.ip_address}: {ex}")
+            raise SwidgetException from ex
 
     async def blink(self):
         """Make the device LED blink
@@ -187,8 +195,9 @@ class SwidgetDevice:
                 ssl=self.ssl
             ) as response:
                 return response.text
-        except:
-            raise SwidgetException
+        except Exception as ex:
+            _LOGGER.error(f"Failed to blink device at {self.ip_address}: {ex}")
+            raise SwidgetException from ex
 
     @property
     def hw_info(self) -> Dict:

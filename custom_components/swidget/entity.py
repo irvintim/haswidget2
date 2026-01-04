@@ -55,6 +55,29 @@ class CoordinatedSwidgetEntity(CoordinatorEntity[SwidgetDataUpdateCoordinator]):
         )
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available.
+
+        Device is considered available if:
+        1. Websocket is connected, OR
+        2. We've received an update recently (last 60 seconds)
+        """
+        import time
+        from .swidgetclient.websocket import STATE_CONNECTED
+
+        # Check websocket connection status
+        if self.device.use_websockets and hasattr(self.device, '_websocket'):
+            if self.device._websocket.state == STATE_CONNECTED:
+                return True
+
+        # Fallback: check if we've received a recent update
+        if hasattr(self.device, '_last_update') and self.device._last_update:
+            time_since_update = time.time() - self.device._last_update
+            return time_since_update < 60  # Consider unavailable after 60s
+
+        return False
+
+    @property
     def is_on(self) -> bool:
         """Return true if switch is on."""
         return bool(self.device.is_on)

@@ -113,8 +113,17 @@ class SwidgetWebsocket:
                 await asyncio.sleep(5)
 
     async def send_str(self, message):
-        _LOGGER.error(f"Sending Message: {message}")
+        """Send a message over the websocket connection.
+
+        Note: This will raise an exception if websocket is not connected.
+        Commands should handle this gracefully.
+        """
+        _LOGGER.debug(f"Sending Message: {message}")
         message = str(message)
+        # Check if websocket is connected before sending
+        if not hasattr(self, 'ws_client') or self.ws_client.closed:
+            _LOGGER.error("Cannot send message - websocket is not connected")
+            raise ConnectionError("Websocket not connected")
         await self.ws_client.send_str(f'{message}')
 
     async def listen(self):
@@ -126,4 +135,7 @@ class SwidgetWebsocket:
     def close(self):
         """Close the listening websocket."""
         self.state = STATE_STOPPED
-        self.ws_client.close()
+        # Only close if websocket client exists and is connected
+        if hasattr(self, 'ws_client') and not self.ws_client.closed:
+            _LOGGER.info("Closing websocket connection")
+            self.ws_client.close()
